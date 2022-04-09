@@ -1,9 +1,17 @@
-use std::env;
+use clap::{Parser};
+
+/// Search for a pattern in a file and display the lines that contain it.
+#[derive(Parser)]
+struct Args {
+    filename: String,
+
+    #[clap(short, long)]
+    platform: String,
+}
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = Args::parse();
+    println!("{}", args.platform);
 
-    let filename = &args[1];
-
-    hammer::bundle(filename);
+    hammer::bundle(&args.filename, &args.platform);
 }

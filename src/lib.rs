@@ -1,19 +1,22 @@
 use regex::Regex;
 use std::fs;
 
-pub fn bundle(filename: &str) {
+pub fn bundle(filename: &str, platform: &str) {
   let contents = fs::read_to_string(filename).expect("Cannot read file");
 
   let imports = get_imports(&contents);
 
-  let cleaned_main = transpile(&contents);
+  let cleaned_main = transpile(&contents, platform);
 
-  let import = &imports[0];
-  let import_with_ext = format!("{}{}", import, ".ts");
-  let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
-  let cleaned_contents = transpile(&import_contents);
+  // if imports.len() > 0 {
+  //   let import = &imports[0];
+  //   let import_with_ext = format!("{}{}", import, ".ts");
+  //   let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
+  //   let cleaned_contents = transpile(&import_contents);
+  // }
+  
 
-  let output = format!("{}{}", cleaned_contents, cleaned_main);
+  let output = format!("{}", cleaned_main);
   fs::write("app.js", output).expect("Failed to write output");
 }
 
@@ -38,7 +41,10 @@ pub fn get_imports(contents: &str) -> std::vec::Vec<String> {
   return imports;
 }
 
-pub fn transpile(contents: &str) -> String {
+pub fn transpile(contents: &str, platform: &str) -> String {
+  if platform == "node" {
+    return String::from(contents);
+  }
   let cleaned = get_import_regex().replace_all(&contents, "");
 
   let export_re = Regex::new(r"export ").unwrap();
@@ -68,7 +74,7 @@ mod tests {
 
     #[test]
     fn it_should_remove_imports() {
-        let cleaned = transpile("import test from './test';\nimport test2 from './test2';");
+        let cleaned = transpile("import test from './test';\nimport test2 from './test2';", "browser");
         assert_eq!(cleaned, "");
     }
 }
