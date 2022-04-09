@@ -1,13 +1,21 @@
+use std::env;
 use regex::Regex;
 use std::fs;
 
 pub fn bundle(filename: &str, outfile: &str, platform: &str) {
-  let contents = fs::read_to_string(filename).expect("Cannot read file");
+  let initial_dir = env::current_dir().unwrap();
+
+  let path = std::path::Path::new(filename);
+  let parent = path.parent().unwrap();
+
+  println!("{}", parent.display());
+  let contents = fs::read_to_string(path).expect("Cannot read file");
 
   let imports = get_imports(&contents);
 
   let mut output = transpile(&contents, platform);
 
+  let _ = env::set_current_dir(parent);
   for import in imports {
     let import_with_ext = format!("{}{}", import, ".ts");
     let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
@@ -16,6 +24,7 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
     output = format!("{}{}", cleaned_contents, output);
   }
   
+  let _ = env::set_current_dir(initial_dir);
   fs::write(outfile, output).expect("Failed to write output");
 }
 
