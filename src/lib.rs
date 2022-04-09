@@ -6,14 +6,16 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
 
   let imports = get_imports(&contents);
 
-  let cleaned_main = transpile(&contents, platform);
+  let mut output = transpile(&contents, platform);
 
-  let import = &imports[0];
-  let import_with_ext = format!("{}{}", import, ".ts");
-  let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
-  let cleaned_contents = transpile(&import_contents, &platform);
+  for import in imports {
+    let import_with_ext = format!("{}{}", import, ".ts");
+    let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
+    let cleaned_contents = transpile(&import_contents, &platform);
+
+    output = format!("{}{}", cleaned_contents, output);
+  }
   
-  let output = format!("{}{}", cleaned_contents, cleaned_main);
   fs::write(outfile, output).expect("Failed to write output");
 }
 
