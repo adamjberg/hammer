@@ -5,6 +5,8 @@ use clap::{Parser};
 struct Args {
     filename: String,
 
+    outfile: String,
+
     #[clap(short, long)]
     platform: String,
 }
@@ -13,5 +15,5 @@ fn main() {
     let args = Args::parse();
     println!("{}", args.platform);
 
-    hammer::bundle(&args.filename, &args.platform);
+    hammer::bundle(&args.filename, &args.outfile, &args.platform);
 }

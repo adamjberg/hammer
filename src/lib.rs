@@ -1,23 +1,20 @@
 use regex::Regex;
 use std::fs;
 
-pub fn bundle(filename: &str, platform: &str) {
+pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let contents = fs::read_to_string(filename).expect("Cannot read file");
 
   let imports = get_imports(&contents);
 
   let cleaned_main = transpile(&contents, platform);
 
-  // if imports.len() > 0 {
-  //   let import = &imports[0];
-  //   let import_with_ext = format!("{}{}", import, ".ts");
-  //   let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
-  //   let cleaned_contents = transpile(&import_contents);
-  // }
+  let import = &imports[0];
+  let import_with_ext = format!("{}{}", import, ".ts");
+  let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
+  let cleaned_contents = transpile(&import_contents, &platform);
   
-
-  let output = format!("{}", cleaned_main);
-  fs::write("app.js", output).expect("Failed to write output");
+  let output = format!("{}{}", cleaned_contents, cleaned_main);
+  fs::write(outfile, output).expect("Failed to write output");
 }
 
 pub fn get_import_regex() -> Regex {
