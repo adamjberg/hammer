@@ -8,8 +8,10 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let path = std::path::Path::new(filename);
   let parent = path.parent().unwrap();
 
-  println!("{}", parent.display());
+  println!("{}", fs::canonicalize(path).unwrap().display());
   let contents = fs::read_to_string(path).expect("Cannot read file");
+
+  let mut imported_files: std::vec::Vec<String> = vec![];
 
   let imports = get_imports(&contents);
 
@@ -18,10 +20,22 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let _ = env::set_current_dir(parent);
   for import in imports {
     let import_with_ext = format!("{}{}", import, ".ts");
-    let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
+    let import_path = std::path::Path::new(&import_with_ext);
+    let import_contents = fs::read_to_string(import_path).expect("Cannot read file");
     let cleaned_contents = transpile(&import_contents, &platform);
-
+    imported_files.push(String::from(import_path.to_str().unwrap()));
     output = format!("{}{}", cleaned_contents, output);
+
+    let imports_from_import = get_imports(&import_contents);
+    for import in imports_from_import {
+      let import_with_ext = format!("{}{}", import, ".ts");
+      let import_path = std::path::Path::new(&import_with_ext);
+      let import_contents = fs::read_to_string(import_path).expect("Cannot read file");
+
+      let cleaned_contents = transpile(&import_contents, &platform);
+      imported_files.push(String::from(import_path.to_str().unwrap()));
+      output = format!("{}{}", cleaned_contents, output);
+    }
   }
   
   let _ = env::set_current_dir(initial_dir);
@@ -58,7 +72,10 @@ pub fn transpile(contents: &str, platform: &str) -> String {
   let export_re = Regex::new(r"export ").unwrap();
   let without_exports = export_re.replace_all(&cleaned, "");
 
-  return String::from(without_exports);
+  let param_types_re = Regex::new(r": [\w]*").unwrap();
+  let without_param_types = param_types_re.replace_all(&without_exports, "");
+
+  return String::from(without_param_types);
 }
 
 #[cfg(test)]
@@ -84,5 +101,11 @@ mod tests {
     fn it_should_remove_imports() {
         let cleaned = transpile("import test from './test';\nimport test2 from './test2';", "browser");
         assert_eq!(cleaned, "");
+    }
+
+    #[test]
+    fn it_should_remove_param_types() {
+        let cleaned = transpile("export function Text(text: string) {}", "browser");
+        assert_eq!(cleaned, "function Text(text) {}");
     }
 }

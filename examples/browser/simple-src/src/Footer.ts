@@ -1,7 +1,5 @@
+import { Text } from "./components/Text";
+
 export function Footer() {
-  const el = document.createElement("div");
-
-  el.innerText = "Goodbye World";
-
-  return el;
+  return Text("Goodbye World");
 }

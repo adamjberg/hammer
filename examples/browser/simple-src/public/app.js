@@ -4,12 +4,15 @@ function Header() {
   div.innerText = "Hello World";
 
   return div;
-}function Footer() {
+}function Text(text) {
   const el = document.createElement("div");
 
-  el.innerText = "Goodbye World";
-
+  el.innerText = text;
+  
   return el;
+}
+function Footer() {
+  return Text("Goodbye World");
 }
 const root = document.getElementById("root");
 
