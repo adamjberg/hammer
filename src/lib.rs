@@ -4,29 +4,23 @@ use std::fs;
 pub fn bundle(filename: &str) {
   let contents = fs::read_to_string(filename).expect("Cannot read file");
 
-  let re = Regex::new(r#"import .* from ["'](.*)['"];?"#).unwrap();
-  let cap = re.captures(&contents).unwrap();
+  let imports = get_imports(&contents);
 
-  let cleaned_main = re.replace_all(&contents, "");
+  let cleaned_main = transpile(&contents);
 
-  let import = &cap[1];
+  let import = &imports[0];
   let import_with_ext = format!("{}{}", import, ".ts");
   let import_contents = fs::read_to_string(import_with_ext).expect("Cannot read file");
-  let export_re = Regex::new(r"export ").unwrap();
-  let cleaned_contents = export_re.replace_all(&import_contents, "");
+  let cleaned_contents = transpile(&import_contents);
 
   let output = format!("{}{}", cleaned_contents, cleaned_main);
   fs::write("app.js", output).expect("Failed to write output");
 }
 
-pub fn process_input_file_contents(contents: &str) {
-  let imports = get_imports(contents);
-}
-
 pub fn get_import_regex() -> Regex {
   // https://docs.rs/regex/latest/regex/
   // lazy_static! {
-  let re = Regex::new(r#"import .* from ["'](.*)['"];?"#).unwrap();
+  let re = Regex::new(r#"import .* from ["'](.*)['"];?[\n]?"#).unwrap();
   // }
 
   return re;
@@ -44,10 +38,13 @@ pub fn get_imports(contents: &str) -> std::vec::Vec<String> {
   return imports;
 }
 
-pub fn transpile(contents: &str) {
+pub fn transpile(contents: &str) -> String {
   let cleaned = get_import_regex().replace_all(&contents, "");
 
-  // return cleaned;
+  let export_re = Regex::new(r"export ").unwrap();
+  let without_exports = export_re.replace_all(&cleaned, "");
+
+  return String::from(without_exports);
 }
 
 #[cfg(test)]
@@ -67,5 +64,11 @@ mod tests {
         assert_eq!(imports.len(), 2);
         assert_eq!(imports[0], "./test");
         assert_eq!(imports[1], "./test2");
+    }
+
+    #[test]
+    fn it_should_remove_imports() {
+        let cleaned = transpile("import test from './test';\nimport test2 from './test2';");
+        assert_eq!(cleaned, "");
     }
 }
