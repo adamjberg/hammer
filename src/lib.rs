@@ -8,7 +8,6 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let path = std::path::Path::new(filename);
   let parent = path.parent().unwrap();
 
-  println!("{}", fs::canonicalize(path).unwrap().display());
   let contents = fs::read_to_string(path).expect("Cannot read file");
 
   let mut imported_files: std::vec::Vec<String> = vec![];
@@ -16,6 +15,10 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let imports = get_imports(&contents);
 
   let mut output = transpile(&contents, platform);
+
+  // If not already imported, transpile and add to output
+  // What is base case?
+  
 
   let _ = env::set_current_dir(parent);
   for import in imports {
@@ -40,6 +43,35 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   
   let _ = env::set_current_dir(initial_dir);
   fs::write(outfile, output).expect("Failed to write output");
+}
+
+fn get_output_for_file(filename: &str, imported_files: &std::vec::Vec<String>, current_output: &str, platform: &str) -> String {
+  let mut output = String::from(current_output);
+  let path = std::path::Path::new(filename);
+
+  let canonicalized_path = std::fs::canonicalize(path).unwrap();
+
+  let canonicalized_path_str = String::from(canonicalized_path.to_str().unwrap());
+  let has_already_been_imported = imported_files.contains(&canonicalized_path_str);
+  if has_already_been_imported {
+    return output;
+  }
+
+  let mut new_imported_files = imported_files.clone();
+  new_imported_files.push(canonicalized_path_str);
+
+  let parent = path.parent().unwrap();
+
+  let contents = fs::read_to_string(path).expect("Cannot read file");
+  output = format!("{}{}", output, transpile(&contents, platform));
+
+  let imports = get_imports(&contents);
+  for import in imports {
+    output = format!("{}{}", output, get_output_for_file(&import, &new_imported_files, current_output, platform));
+  }
+
+  
+  return output;
 }
 
 pub fn get_import_regex() -> Regex {
