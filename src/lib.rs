@@ -1,6 +1,8 @@
 use std::env;
 use regex::Regex;
 use std::fs;
+use std::collections::HashMap;
+
 
 pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let initial_dir = env::current_dir().unwrap();
@@ -8,8 +10,16 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
 
   let mut imports = vec![String::from(filename)];
 
+  let mut imported_files_map = HashMap::new();
+
   while imports.len() > 0 {
     let import = imports.pop().unwrap();
+
+    if imported_files_map.contains_key(&import) {
+      continue;
+    }
+
+    imported_files_map.insert(import.clone(), true);
 
     let path = std::path::Path::new(&import);
     let parent = path.parent().unwrap();
