@@ -4,74 +4,32 @@ use std::fs;
 
 pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let initial_dir = env::current_dir().unwrap();
+  let mut output = String::new();
 
-  let path = std::path::Path::new(filename);
-  let parent = path.parent().unwrap();
+  let mut imports = vec![String::from(filename)];
 
-  let contents = fs::read_to_string(path).expect("Cannot read file");
+  while imports.len() > 0 {
+    let import = imports.pop().unwrap();
 
-  let mut imported_files: std::vec::Vec<String> = vec![];
+    let path = std::path::Path::new(&import);
+    let parent = path.parent().unwrap();
+    let _ = env::set_current_dir(parent);
 
-  let imports = get_imports(&contents);
-
-  let mut output = transpile(&contents, platform);
-
-  // If not already imported, transpile and add to output
-  // What is base case?
-  
-
-  let _ = env::set_current_dir(parent);
-  for import in imports {
     let import_with_ext = format!("{}{}", import, ".ts");
+
     let import_path = std::path::Path::new(&import_with_ext);
-    let import_contents = fs::read_to_string(import_path).expect("Cannot read file");
-    let cleaned_contents = transpile(&import_contents, &platform);
-    imported_files.push(String::from(import_path.to_str().unwrap()));
+    let contents = fs::read_to_string(import_path).expect("Cannot read file");
+
+    let mut imports_to_add = get_imports(&contents);
+    imports.append(&mut imports_to_add);
+
+    let cleaned_contents = transpile(&contents, &platform);
+
     output = format!("{}{}", cleaned_contents, output);
-
-    let imports_from_import = get_imports(&import_contents);
-    for import in imports_from_import {
-      let import_with_ext = format!("{}{}", import, ".ts");
-      let import_path = std::path::Path::new(&import_with_ext);
-      let import_contents = fs::read_to_string(import_path).expect("Cannot read file");
-
-      let cleaned_contents = transpile(&import_contents, &platform);
-      imported_files.push(String::from(import_path.to_str().unwrap()));
-      output = format!("{}{}", cleaned_contents, output);
-    }
   }
   
   let _ = env::set_current_dir(initial_dir);
   fs::write(outfile, output).expect("Failed to write output");
-}
-
-fn get_output_for_file(filename: &str, imported_files: &std::vec::Vec<String>, current_output: &str, platform: &str) -> String {
-  let mut output = String::from(current_output);
-  let path = std::path::Path::new(filename);
-
-  let canonicalized_path = std::fs::canonicalize(path).unwrap();
-
-  let canonicalized_path_str = String::from(canonicalized_path.to_str().unwrap());
-  let has_already_been_imported = imported_files.contains(&canonicalized_path_str);
-  if has_already_been_imported {
-    return output;
-  }
-
-  let mut new_imported_files = imported_files.clone();
-  new_imported_files.push(canonicalized_path_str);
-
-  let parent = path.parent().unwrap();
-
-  let contents = fs::read_to_string(path).expect("Cannot read file");
-  output = format!("{}{}", output, transpile(&contents, platform));
-
-  let imports = get_imports(&contents);
-  for import in imports {
-    output = format!("{}{}", output, get_output_for_file(&import, &new_imported_files, current_output, platform));
-  }
-
-  
-  return output;
 }
 
 pub fn get_import_regex() -> Regex {
@@ -99,13 +57,10 @@ pub fn transpile(contents: &str, platform: &str) -> String {
   if platform == "node" {
     return String::from(contents);
   }
-  let cleaned = get_import_regex().replace_all(&contents, "");
-
-  let export_re = Regex::new(r"export ").unwrap();
-  let without_exports = export_re.replace_all(&cleaned, "");
+  let without_imports = get_import_regex().replace_all(&contents, "");
 
   let param_types_re = Regex::new(r": [\w]*").unwrap();
-  let without_param_types = param_types_re.replace_all(&without_exports, "");
+  let without_param_types = param_types_re.replace_all(&without_imports, "");
 
   return String::from(without_param_types);
 }
