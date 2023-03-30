@@ -8,30 +8,38 @@ pub fn bundle(filename: &str, outfile: &str, platform: &str) {
   let initial_dir = env::current_dir().unwrap();
   let mut output = String::new();
 
-  let mut imports = vec![String::from(filename)];
-
   let mut imported_files_map = HashMap::new();
+
+  let path = std::path::Path::new(&filename);
+
+  let mut imports = vec![String::from(path.file_stem().unwrap().to_str().unwrap())];
+    
+  let parent = path.parent().unwrap();
+  let _ = env::set_current_dir(parent);
 
   while imports.len() > 0 {
     let import = imports.pop().unwrap();
 
-    if imported_files_map.contains_key(&import) {
-      continue;
-    }
+    let import_with_ext = format!("{}{}", import, ".js");
 
-    imported_files_map.insert(import.clone(), true);
+    let import_path = std::path::Path::new(&import_with_ext);
+    let contents = fs::read_to_string(import_path).expect(format!("Cannot read {}", import_with_ext).as_str());
 
     let path = std::path::Path::new(&import);
     let parent = path.parent().unwrap();
-    let _ = env::set_current_dir(parent);
 
-    let import_with_ext = format!("{}{}", import, ".ts");
+    let imports_to_add = get_imports(&contents);
+    for import_to_add in imports_to_add {
+      let full_path = parent.join(import_to_add);
 
-    let import_path = std::path::Path::new(&import_with_ext);
-    let contents = fs::read_to_string(import_path).expect("Cannot read file");
+      if imported_files_map.contains_key(&import) {
+        continue;
+      }
 
-    let mut imports_to_add = get_imports(&contents);
-    imports.append(&mut imports_to_add);
+      let full_import_path = String::from(full_path.to_str().unwrap());
+      imports.push(full_import_path.clone());
+      imported_files_map.insert(full_import_path.clone(), true);
+    }
 
     let cleaned_contents = transpile(&contents, &platform);
 
@@ -69,10 +77,10 @@ pub fn transpile(contents: &str, platform: &str) -> String {
   }
   let without_imports = get_import_regex().replace_all(&contents, "");
 
-  let param_types_re = Regex::new(r": [\w]*").unwrap();
-  let without_param_types = param_types_re.replace_all(&without_imports, "");
+  // let param_types_re = Regex::new(r": [\w]*").unwrap();
+  // let without_param_types = param_types_re.replace_all(&without_imports, "");
 
-  return String::from(without_param_types);
+  return String::from(without_imports);
 }
 
 #[cfg(test)]

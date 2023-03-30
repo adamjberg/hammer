@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "build": "hammer src/index public/index.js --platform=browser"
+  }
+}
